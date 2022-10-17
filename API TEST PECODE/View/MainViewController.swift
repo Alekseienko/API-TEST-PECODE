@@ -4,8 +4,7 @@
 //
 //  Created by alekseienko on 14.10.2022.
 //
-//9f05653438f24480ad395bef6ac8a3ae apiKey1
-//4eaddc397dff4f98beb748e4f953edcc apiKey2
+
 
 import UIKit
 import RealmSwift
@@ -13,17 +12,15 @@ import RealmSwift
 class MainViewController: UIViewController {
     // MARK: - PROPERTIES
     let newsCellId = "NewsTableViewCell"
-    let apiKey = "&apiKey=9f05653438f24480ad395bef6ac8a3ae"
-    let apiService = "https://newsapi.org/v2/top-headlines?"
-    let apiDecoderManager = APIDecoderManager()
+    let networkDataFetcher = NetworkDataFetcher()
     let searchController = UISearchController(searchResultsController: nil)
     let realm = try! Realm()
     
-    private var apiRequest = "country=ua"
-    private var apiCurrentUrl = ""
-    private var apiData: APIModel? = nil
+    private var apiData: [Article] = []
     private var isSorted: Bool = false
     private var timer: Timer?
+    private var pageSize: Int = 10
+    private var page: Int = 1
     
     // MARK: - IBOTLETS
     @IBOutlet weak var table: UITableView!
@@ -41,8 +38,9 @@ class MainViewController: UIViewController {
         setupSearchBar()
         setupPiker()
         setupRefreshControl()
-        apiCurrentUrl = apiService + apiRequest + apiKey
-        loadData(url: apiCurrentUrl)
+            
+        networkDataFetcher.apiNetworkManager.apiCurrentUrl = networkDataFetcher.apiNetworkManager.apiService + networkDataFetcher.apiNetworkManager.apiRequest + networkDataFetcher.apiNetworkManager.apiKey
+        loadData(url: networkDataFetcher.apiNetworkManager.apiCurrentUrl)
     }
     
     // MARK: - SETUP REFRESH
@@ -51,7 +49,7 @@ class MainViewController: UIViewController {
         table.refreshControl?.addTarget(self, action: #selector(swipeRefreshControl),for: .valueChanged)
     }
     @objc func swipeRefreshControl() {
-        loadData(url: apiCurrentUrl)
+        loadData(url: networkDataFetcher.apiNetworkManager.apiCurrentUrl)
         DispatchQueue.main.async {
             self.table.refreshControl?.endRefreshing()
         }
@@ -60,30 +58,29 @@ class MainViewController: UIViewController {
     // MARK: - FUNCTIONS
     //LOAD DATA
     private func loadData(url: String) {
-        let apiURL = url
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: false, block: { _ in
-            self.apiDecoderManager.decodeData(urlString: apiURL) { (searchResponse) in
+        timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false, block: { [self] _ in
+            self.networkDataFetcher.decodeData(urlString: url,page: page,pageSize: pageSize) { (searchResponse) in
                 guard let searchResponse = searchResponse else { return }
-                self.apiData = searchResponse
+                self.page += 1
+                self.apiData += searchResponse
+                self.navigationItem.title =  "NEWS: \(self.apiData.count)"
                 self.table.reloadData()
-                self.navigationItem.title =  "NEWS: \(searchResponse.articles.count)"
             }
         })
     }
     //FILTER DATA
     private func filterData() {
-        guard var sortData = apiData?.articles else {return}
+        var sortData = apiData
         if isSorted {
             sortData.sort(by: {$0.publishedAt! > $1.publishedAt!})
         } else {
             sortData.sort(by: {$0.publishedAt! < $1.publishedAt!})
         }
-        apiData?.articles = sortData
+        apiData = sortData
         isSorted.toggle()
         table.reloadData()
     }
-    
 }
 // MARK: - EXTENTIONS SEARCHBAR
 extension MainViewController: UISearchBarDelegate {
@@ -95,47 +92,55 @@ extension MainViewController: UISearchBarDelegate {
     }
     //LOAD DATA WITH SERCH TEXT
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-        apiCurrentUrl = "https://newsapi.org/v2/everything?q=\(searchText)\(apiKey)"
-        loadData(url: apiCurrentUrl)
+        apiData = []
+        table.reloadData()
+        networkDataFetcher.apiNetworkManager.apiCurrentUrl = "https://newsapi.org/v2/everything?q=\(searchText)\(networkDataFetcher.apiNetworkManager.apiKey)"
+        loadData(url: networkDataFetcher.apiNetworkManager.apiCurrentUrl)
     }
 }
 
 // MARK: - EXTENTIONS TABLEVIEW
-extension MainViewController: UITableViewDelegate, UITableViewDataSource {
+extension MainViewController: UITableViewDelegate, UITableViewDataSource,UITableViewDataSourcePrefetching {
+    func tableView(_ tableView: UITableView, prefetchRowsAt indexPaths: [IndexPath]) {
+        if indexPaths.contains(where: { $0.row >= apiData.count - 1 }) {
+            loadData(url: networkDataFetcher.apiNetworkManager.apiCurrentUrl)
+        }
+    }
     //TABLEVIEW SETUP
     private func setupTableView() {
         table.delegate = self
         table.dataSource = self
+        table.prefetchDataSource = self
         table.register(UINib.init(nibName: newsCellId, bundle: nil), forCellReuseIdentifier: newsCellId)
     }
     //TABLEVIEW ROW COUNT
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return apiData?.articles.count ?? 0
+        return apiData.count
     }
     //TABLEVIEW ROW DATA
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = table.dequeueReusableCell(withIdentifier: newsCellId, for: indexPath) as! NewsTableViewCell
-        let article = apiData?.articles[indexPath.row]
-        cell.titleName.text = article?.title ?? ""
-        cell.descriptionName.text = article?.description ?? ""
-        cell.autorName.text = article?.author ?? ""
-        cell.sourseName.text = article?.source?.name ?? ""
-        cell.imgName.downloaded(from: article?.urlToImage ?? "", contentMode: .scaleAspectFill)
+        let article = apiData[indexPath.row]
+        cell.titleName.text = article.title
+        cell.descriptionName.text = article.description
+        cell.autorName.text = article.author
+        cell.sourseName.text = article.source?.name
+        cell.imgName.downloaded(from: article.urlToImage ?? "" , contentMode: .scaleAspectFill)
         return cell
     }
     //TABLEVIEW SAVE DATA
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
         let contexItem = UIContextualAction(style: .normal, title: "SAVE") { [self] contextualAction, view, complete in
-            let article = self.apiData?.articles[indexPath.row]
+            let article = self.apiData[indexPath.row]
             let newArticle = ArticleObject()
-            newArticle.author = article?.author ?? ""
-            newArticle.title = article?.title ?? ""
-            newArticle.articleDescription = article?.description ?? ""
-            newArticle.url = article?.url ?? ""
-            newArticle.urlToImage = article?.urlToImage ?? ""
-            newArticle.publishedAt = article?.publishedAt ?? ""
-            newArticle.content = article?.content ?? ""
-            newArticle.articleSource?.name = article?.source?.name ?? ""
+            newArticle.author = article.author ?? ""
+            newArticle.title = article.title ?? ""
+            newArticle.articleDescription = article.description ?? ""
+            newArticle.url = article.url ?? ""
+            newArticle.urlToImage = article.urlToImage ?? ""
+            newArticle.publishedAt = article.publishedAt ?? ""
+            newArticle.content = article.content ?? ""
+            newArticle.articleSource?.name = article.source?.name ?? ""
             try! self.realm.write({
                 realm.add(newArticle)
             })
@@ -145,17 +150,22 @@ extension MainViewController: UITableViewDelegate, UITableViewDataSource {
         let swipeActions = UISwipeActionsConfiguration(actions: [contexItem])
         return swipeActions
     }
+    
     //SEND DATA TO WebViewController
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let vc = storyboard?.instantiateViewController(withIdentifier: "WebViewController") as? WebViewController
-        vc?.urlString = apiData?.articles[indexPath.row].url
+        vc?.urlString = apiData[indexPath.row].url
         self.navigationController?.pushViewController(vc!, animated: true)
     }
-    
 }
 
 // MARK: - EXTENTION PICKERVIEW
 extension MainViewController: UIPickerViewDelegate, UIPickerViewDataSource {
+    //PICKERVIEW SETUP
+    private func setupPiker() {
+        pickerView.delegate = self
+        pickerView.dataSource = self
+    }
     // PICKERS COUNT
     func numberOfComponents(in pickerView: UIPickerView) -> Int {
         return 2
@@ -180,22 +190,20 @@ extension MainViewController: UIPickerViewDelegate, UIPickerViewDataSource {
     }
     //PICKER FILTER
     func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+        if component == 0 {
+            pickerView.selectRow(0, inComponent: 1, animated: true)
+        }
         pickerView.reloadAllComponents()
+        apiData = []
         let selectedType = pickerView.selectedRow(inComponent: 0)
         let selectedValue = pickerView.selectedRow(inComponent: 1)
         let type = filters[selectedType].type
         let value = filters[selectedType].value[selectedValue]
-        if component == 0 {
-            pickerView.selectRow(0, inComponent: 1, animated: true)
-        }
-        apiRequest = type[1] + value
-        apiCurrentUrl = apiService + apiRequest + apiKey
-        loadData(url: apiService + apiRequest + apiKey)
-    }
-    //PICKERVIEW SETUP
-    private func setupPiker() {
-        pickerView.delegate = self
-        pickerView.dataSource = self
+        
+        networkDataFetcher.apiNetworkManager.apiRequest = type[1] + value
+        networkDataFetcher.apiNetworkManager.apiCurrentUrl = networkDataFetcher.apiNetworkManager.apiService + networkDataFetcher.apiNetworkManager.apiRequest + networkDataFetcher.apiNetworkManager.apiKey
+        page = 1
+        loadData(url: networkDataFetcher.apiNetworkManager.apiCurrentUrl)
     }
 }
 

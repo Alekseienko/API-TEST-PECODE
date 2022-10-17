@@ -24,7 +24,7 @@
 		0B95E64828F9B45C00DC4158 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 0B95E64628F9B45C00DC4158 /* LaunchScreen.storyboard */; };
 		0B95E65028F9CA8300DC4158 /* APIModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B95E64F28F9CA8300DC4158 /* APIModel.swift */; };
 		0B95E65228F9D0D900DC4158 /* APINetworkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B95E65128F9D0D900DC4158 /* APINetworkManager.swift */; };
-		0B95E65628FA885400DC4158 /* APIDecoderManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B95E65528FA885400DC4158 /* APIDecoderManager.swift */; };
+		0B95E65628FA885400DC4158 /* NetworkDataFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B95E65528FA885400DC4158 /* NetworkDataFetcher.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,7 +45,7 @@
 		0B95E64928F9B45C00DC4158 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		0B95E64F28F9CA8300DC4158 /* APIModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIModel.swift; sourceTree = "<group>"; };
 		0B95E65128F9D0D900DC4158 /* APINetworkManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APINetworkManager.swift; sourceTree = "<group>"; };
-		0B95E65528FA885400DC4158 /* APIDecoderManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIDecoderManager.swift; sourceTree = "<group>"; };
+		0B95E65528FA885400DC4158 /* NetworkDataFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkDataFetcher.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -144,7 +144,7 @@
 			isa = PBXGroup;
 			children = (
 				0B95E65128F9D0D900DC4158 /* APINetworkManager.swift */,
-				0B95E65528FA885400DC4158 /* APIDecoderManager.swift */,
+				0B95E65528FA885400DC4158 /* NetworkDataFetcher.swift */,
 			);
 			path = API;
 			sourceTree = "<group>";
@@ -233,7 +233,7 @@
 				0B3C090728FB0A3000901FAC /* FavoriteListViewController.swift in Sources */,
 				0B95E64028F9B45A00DC4158 /* MainViewController.swift in Sources */,
 				0B95E65228F9D0D900DC4158 /* APINetworkManager.swift in Sources */,
-				0B95E65628FA885400DC4158 /* APIDecoderManager.swift in Sources */,
+				0B95E65628FA885400DC4158 /* NetworkDataFetcher.swift in Sources */,
 				0B95E63C28F9B45A00DC4158 /* AppDelegate.swift in Sources */,
 				0B5FECAF28FCB1330022FD30 /* FilterData.swift in Sources */,
 				0B5FECAC28FCA6450022FD30 /* FilterModel.swift in Sources */,
