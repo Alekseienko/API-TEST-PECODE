@@ -38,9 +38,7 @@ class MainViewController: UIViewController {
         setupSearchBar()
         setupPiker()
         setupRefreshControl()
-            
-        networkDataFetcher.apiNetworkManager.apiCurrentUrl = networkDataFetcher.apiNetworkManager.apiService + networkDataFetcher.apiNetworkManager.apiRequest + networkDataFetcher.apiNetworkManager.apiKey
-        loadData(url: networkDataFetcher.apiNetworkManager.apiCurrentUrl)
+        loadData(request: networkDataFetcher.apiNetworkManager.apiRequest)
     }
     
     // MARK: - SETUP REFRESH
@@ -49,7 +47,7 @@ class MainViewController: UIViewController {
         table.refreshControl?.addTarget(self, action: #selector(swipeRefreshControl),for: .valueChanged)
     }
     @objc func swipeRefreshControl() {
-        loadData(url: networkDataFetcher.apiNetworkManager.apiCurrentUrl)
+        loadData(request: networkDataFetcher.apiNetworkManager.lastURL)
         DispatchQueue.main.async {
             self.table.refreshControl?.endRefreshing()
         }
@@ -57,10 +55,10 @@ class MainViewController: UIViewController {
     
     // MARK: - FUNCTIONS
     //LOAD DATA
-    private func loadData(url: String) {
+    private func loadData(request: String) {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false, block: { [self] _ in
-            self.networkDataFetcher.decodeData(urlString: url,page: page,pageSize: pageSize) { (searchResponse) in
+            self.networkDataFetcher.decodeData(urlString: request, page: page, pageSize: pageSize) { (searchResponse) in
                 guard let searchResponse = searchResponse else { return }
                 self.page += 1
                 self.apiData += searchResponse
@@ -94,8 +92,10 @@ extension MainViewController: UISearchBarDelegate {
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         apiData = []
         table.reloadData()
-        networkDataFetcher.apiNetworkManager.apiCurrentUrl = "https://newsapi.org/v2/everything?q=\(searchText)\(networkDataFetcher.apiNetworkManager.apiKey)"
-        loadData(url: networkDataFetcher.apiNetworkManager.apiCurrentUrl)
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false, block: { [self] _ in
+            loadData(request: "everything?q=\(searchText)")
+        })
     }
 }
 
@@ -103,7 +103,7 @@ extension MainViewController: UISearchBarDelegate {
 extension MainViewController: UITableViewDelegate, UITableViewDataSource,UITableViewDataSourcePrefetching {
     func tableView(_ tableView: UITableView, prefetchRowsAt indexPaths: [IndexPath]) {
         if indexPaths.contains(where: { $0.row >= apiData.count - 1 }) {
-            loadData(url: networkDataFetcher.apiNetworkManager.apiCurrentUrl)
+            loadData(request: networkDataFetcher.apiNetworkManager.lastURL)
         }
     }
     //TABLEVIEW SETUP
@@ -199,11 +199,8 @@ extension MainViewController: UIPickerViewDelegate, UIPickerViewDataSource {
         let selectedValue = pickerView.selectedRow(inComponent: 1)
         let type = filters[selectedType].type
         let value = filters[selectedType].value[selectedValue]
-        
-        networkDataFetcher.apiNetworkManager.apiRequest = type[1] + value
-        networkDataFetcher.apiNetworkManager.apiCurrentUrl = networkDataFetcher.apiNetworkManager.apiService + networkDataFetcher.apiNetworkManager.apiRequest + networkDataFetcher.apiNetworkManager.apiKey
         page = 1
-        loadData(url: networkDataFetcher.apiNetworkManager.apiCurrentUrl)
+        loadData(request: type[1] + value)
     }
 }
 

@@ -13,7 +13,7 @@ class NetworkDataFetcher {
     
     func decodeData(urlString: String, page: Int, pageSize: Int, response: @escaping ([Article]?) -> Void ) {
                     
-        apiNetworkManager.getData(apiUrl: urlString , page: page, pageSize: pageSize) { (result) in
+        apiNetworkManager.getData(request: urlString , page: page, pageSize: pageSize) { (result) in
             switch result {
             case .success(let data):
                 do {
