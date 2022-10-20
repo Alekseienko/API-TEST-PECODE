@@ -15,6 +15,7 @@ class MainViewController: UIViewController {
     let networkDataFetcher = NetworkDataFetcher()
     let searchController = UISearchController(searchResultsController: nil)
     let realm = try! Realm()
+    let activityIndicator = UIActivityIndicatorView(style: UIActivityIndicatorView.Style.large)
     
     private var apiData: [Article] = []
     private var isSorted: Bool = false
@@ -38,7 +39,22 @@ class MainViewController: UIViewController {
         setupSearchBar()
         setupPiker()
         setupRefreshControl()
+        setupActivityIndicator()
         loadData(request: networkDataFetcher.apiNetworkManager.apiRequest)
+    }
+    
+    
+    // MARK: - ACTIVITI INDICATOR
+    
+    func setupActivityIndicator() {
+        view.addSubview(activityIndicator)
+        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+        activityIndicator.hidesWhenStopped = true
+        activityIndicator.color = UIColor.red
+        let horizontalConstraint = NSLayoutConstraint(item: activityIndicator, attribute: NSLayoutConstraint.Attribute.centerX, relatedBy: NSLayoutConstraint.Relation.equal, toItem: view, attribute: NSLayoutConstraint.Attribute.centerX, multiplier: 1, constant: 0)
+        view.addConstraint(horizontalConstraint)
+        let verticalConstraint = NSLayoutConstraint(item: activityIndicator, attribute: NSLayoutConstraint.Attribute.centerY, relatedBy: NSLayoutConstraint.Relation.equal, toItem: view, attribute: NSLayoutConstraint.Attribute.centerY, multiplier: 1, constant: 0)
+        view.addConstraint(verticalConstraint)
     }
     
     // MARK: - SETUP REFRESH
@@ -56,6 +72,7 @@ class MainViewController: UIViewController {
     // MARK: - FUNCTIONS
     //LOAD DATA
     private func loadData(request: String) {
+        activityIndicator.startAnimating()
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false, block: { [self] _ in
             self.networkDataFetcher.decodeData(urlString: request, page: page, pageSize: pageSize) { (searchResponse) in
@@ -63,6 +80,7 @@ class MainViewController: UIViewController {
                 self.page += 1
                 self.apiData += searchResponse
                 self.navigationItem.title =  "NEWS: \(self.apiData.count)"
+                self.activityIndicator.stopAnimating()
                 self.table.reloadData()
             }
         })
